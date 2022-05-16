@@ -74,7 +74,7 @@ for dir in $cur_path/*/ ; do
 		log=$(echo "$output" | tail -n1 | grep "irun:") 
 		# compare actual path they should put, -10 if not
 		if [ ! -f "$dir$id/$file_path" ] ;then
-			score=$(expr $score - 10)
+			#score=$(expr $score - 10)
 			echo $id >> "$cur_path/wrong_path.csv"
 		fi
 		# check report exist and compare report
