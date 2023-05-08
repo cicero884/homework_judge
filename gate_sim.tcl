@@ -16,7 +16,7 @@ set b [llength $a]
 set k 1
 for { set i 0 } { $i<$b } { incr i } {
   set c [lindex $a $i]
-  if { [string range $c end end]=="v" && "$c" != "$1" } {
+  if { [string range $c end-2 end]==".vo" } {
     set test_library "$test_library ./$c"
     incr k
   }
@@ -79,7 +79,7 @@ foreach {library file_list} $library_file_list {
 set last_compile_time $time_now
 
 # Load the simulation
-eval vsim $top_level
+eval vsim $top_level -L /home/cicero/intelFPGA/20.1/modelsim_ase/altera/verilog/altera -L /home/cicero/intelFPGA/20.1/modelsim_ase/altera/verilog/cycloneive -sdftyp /u_$2=./$2\_v.sdo
 
 # If waves are required
 # if [llength $wave_patterns] {
