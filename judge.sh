@@ -68,7 +68,8 @@ other_check () {
 	#check whether directory structure is the same as example
 	IFS='_ ' read -r -a array <<< $(basename "$student_origin_dir")
 	expect_dir="HW3_${array[0]}_${array[1]}"
-	expect_dir_structure=$(ls "$student_origin_dir/$expect_dir" | xargs -d '\n' -n 1 basename)
+	#expect_dir_structure=$(ls "$student_origin_dir/$expect_dir" | xargs -d '\n' -n 1 basename)
+	expect_dir_structure=$(ls "$student_origin_dir/"*/ | xargs -d '\n' -n 1 basename)
 	if [ "$expect_dir_structure" != "$dir_structure" ]; then
 		score=$(($score-5))
 		echo -e "\033[0;31m wrong directory format!\033[0m"
@@ -107,41 +108,8 @@ extract() {
 	[ -z "$point" ] && point=0
 	echo $point
 }
-
-# store current pos
-echo '學號,成績,評語回饋' > $cur_path/result.csv
-# create basic dir
-mkdir -p $operation_dir
-operation_dir="$cur_path/$operation_dir"
-# check whether user removed origin code
-for i in "${!student_file[@]}"; do
-	find_cmd="find ./$default ${student_file[$i]} -print0 | xargs -0 grep -l \"${student_code[$i]}\" | head -1"
-	demo_code="$(eval "$find_cmd")"
-	if [[ $demo_code == *[!\ ]* ]] ; then
-		echo -e "\033[0;31mPlease check whether you already removed the file student should write.\033[0m"
-		echo -e "Or this script might overwrite the file student should write."
-		echo -e "found file in example $demo_code sus\n"
-	fi
-done
-all_student_path=$(realpath $1)
-# loop every student folderm
-for student_origin_dir in $all_student_path/*/ ; do
-	# ignore default directory
-	#if ! [[ $student_origin_dir -ef $cur_path/$default ]] ; then
-	# cut student id & check is valid id
-	id=$(grep -Eo '[A-Z][0-9A-Z][0-9]{7}' <<<$student_origin_dir)
-	[ -z "$id" ] && echo -e "ignore non student directory: $student_origin_dir\n" && continue
-
-	cd "$student_origin_dir"
-	echo "entering $student_origin_dir... "
-
-	# unzip
-	unzip -oqq *.zip
-	unrar e *.rar  -idq
-	chmod -R +rw ./*
-
-	score=0
-	log=""
+# judge each student
+judge_all_part() {
 	for i in "${!JUDGE[@]}"; do
 		pwd
 		# find source code
@@ -161,8 +129,55 @@ for student_origin_dir in $all_student_path/*/ ; do
 		cd "$student_origin_dir"
 	done
 	# result
-	echo -e "\033[0;31m ----------------------score: $score\033[0m\n\n"
+	echo -e "\033[1;32m ------------------$id----score: $score\033[0m\n\n"
 	echo "$id,$score,$log" >> $cur_path/result.csv
+
+}
+
+# store current pos
+echo '學號,成績,評語回饋' > $cur_path/result.csv
+# create basic dir
+mkdir -p $operation_dir
+operation_dir="$cur_path/$operation_dir"
+# check whether user removed origin code
+for i in "${!student_file[@]}"; do
+	find_cmd="find ./$default ${student_file[$i]} -print0 | xargs -0 grep -l \"${student_code[$i]}\" | head -1"
+	demo_code="$(eval "$find_cmd")"
+	if [[ $demo_code == *[!\ ]* ]] ; then
+		echo -e "\033[0;31mPlease check whether you already removed the file student should write.\033[0m"
+		echo -e "Or this script might overwrite the file student should write."
+		echo -e "found file in example $demo_code sus\n"
+	fi
+done
+all_student_path=$(realpath $1)
+# loop every student folderm
+pids=""
+result=0
+for student_origin_dir in $all_student_path/*/ ; do
+	# ignore default directory
+	#if ! [[ $student_origin_dir -ef $cur_path/$default ]] ; then
+	# cut student id & check is valid id
+	id=$(grep -Eo '[A-Z][0-9A-Z][0-9]{7}' <<<$student_origin_dir)
+	[ -z "$id" ] && echo -e "ignore non student directory: $student_origin_dir\n" && continue
+
+	cd "$student_origin_dir"
+	echo "entering $student_origin_dir... "
+
+	# unzip
+	unzip -oqq *.zip
+	unrar e *.rar  -idq
+	chmod -R +rw ./*
+
+	score=0
+	log=""
+	judge_all_part &
+	pids="$pids $!"
 	#fi
 done
+for pid in ${pids[*]}; do
+	wait $pid || let "result=1"
+done
+if [ "$RESULT" == "1" ]; then
+	exit 1
+fi
 cd $cur_path
